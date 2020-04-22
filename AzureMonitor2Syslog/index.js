@@ -28,7 +28,7 @@ module.exports = function (context, myEventHubMessage) {
     // options for syslog connection
     var options = {
         syslogHostname: SYSLOG_HOSTNAME,
-        transport: SYSLOG_PROTOCOL,    
+        transport: SYSLOG_PROTOCOL,
         port: SYSLOG_PORT
     };
 
@@ -43,17 +43,20 @@ module.exports = function (context, myEventHubMessage) {
     context.log('EnqueuedTimeUtc =', context.bindingData.enqueuedTimeUtc);
     context.log('SequenceNumber =', context.bindingData.sequenceNumber);
     context.log('Offset =', context.bindingData.offset);
-    
+
     // create syslog client
     var client = syslog.createClient(SYSLOG_SERVER, options);
 
     // cycle through eventhub messages and send syslog
     myEventHubMessage.forEach((message, index)=>{
-        if(typeof message === 'object'){
 
-            var msg = JSON.parse(JSON.stringify(message));
+        // convert string to object
+        var msg = JSON.parse(message);
+
+        if(msg.hasOwnProperty('records')){
+            // loop through the json contents
             msg.records.forEach((m1, i) => {
-                client.log(JSON.stringify(m1), options, function(error) {        
+                client.log(JSON.stringify(m1), options, function(error) {
                     if (error) {
                         context.log("error sending message");
                         context.log(error);
@@ -62,13 +65,21 @@ module.exports = function (context, myEventHubMessage) {
                     }
                 });
             });
-            
+
+        } else {
+            var fullmsg = JSON.stringify(msg)
+            client.log(fullmsg, options, function(error) {
+                if (error) {
+                    context.log("error sending message");
+                    context.log(error);
+                } else {
+                    context.log("sent message successfully");
+                }
+            });
         }
     });
-    
 
-      context.log("completed sending all messages");
-
+    context.log("completed sending all messages");
     context.done();
 };
 
