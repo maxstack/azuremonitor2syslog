@@ -1,9 +1,6 @@
-// Forward Azure Monitor Logs to Syslog (via Event Hub)
-// Developed as a sample for testing purpuses
-// https://github.com/miguelangelopereira/azuremonitor2syslog
-// miguelp@microsoft.com
+// Forward Sentinel Alerts to Syslog
 
-module.exports = function (context, myEventHubMessage) {
+module.exports = function (context, sentinelMessage) {
     // initializing syslog
     var syslog = require("syslog-client");
 
@@ -28,7 +25,7 @@ module.exports = function (context, myEventHubMessage) {
     // options for syslog connection
     var options = {
         syslogHostname: SYSLOG_HOSTNAME,
-        transport: SYSLOG_PROTOCOL,    
+        transport: SYSLOG_PROTOCOL,
         port: SYSLOG_PORT
     };
 
@@ -38,36 +35,23 @@ module.exports = function (context, myEventHubMessage) {
     context.log('SYSLOG Protocol: ', SYSLOG_PROTOCOL);
     context.log('SYSLOG Hostname: ', SYSLOG_HOSTNAME);
 
-    // log received message from event hub
-    context.log('Event Hubs trigger function processed message: ', myEventHubMessage);
-    context.log('EnqueuedTimeUtc =', context.bindingData.enqueuedTimeUtc);
-    context.log('SequenceNumber =', context.bindingData.sequenceNumber);
-    context.log('Offset =', context.bindingData.offset);
-    
+    // log received message from sentinel
+    context.log('Sentinel trigger function processed message: ', sentinelMessage);
+
     // create syslog client
     var client = syslog.createClient(SYSLOG_SERVER, options);
 
-    // cycle through eventhub messages and send syslog
-    myEventHubMessage.forEach((message, index)=>{
-        if(typeof message === 'object'){
+    // capture the boy of the request
+    var body = sentinelMessage.body
 
-            var msg = JSON.parse(JSON.stringify(message));
-            msg.records.forEach((m1, i) => {
-                client.log(JSON.stringify(m1), options, function(error) {        
-                    if (error) {
-                        context.log("error sending message");
-                        context.log(error);
-                    } else {
-                        context.log("sent message successfully");
-                    }
-                });
-            });
-            
-        }
-    });
-    
-
-      context.log("completed sending all messages");
+    // send to syslog server
+    try {
+        client.log(JSON.stringify(body), options);
+        context.log('message sent successfully');
+    }
+    catch(err) {
+        context.log("error sending message");
+    }
 
     context.done();
 };
