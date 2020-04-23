@@ -45,13 +45,15 @@ module.exports = function (context, sentinelMessage) {
     var body = sentinelMessage.body
 
     // send to syslog server
-    try {
-        client.log(JSON.stringify(body), options);
-        context.log('message sent successfully');
-    }
-    catch(err) {
-        context.log("error sending message");
-    }
+    var message = "something is wrong with the rsyslog daemon";
+ 
+    client.log(JSON.stringify(body), options, function(error) {
+        if (error) {
+            console.error(error);
+        } else {
+            console.log("sent message successfully");
+        }
+    });
 
     context.done();
 };
